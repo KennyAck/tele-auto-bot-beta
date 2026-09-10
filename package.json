@@ -1,0 +1,19 @@
+{
+  "name": "azzan-fi-nas-bot",
+  "version": "2.0.0",
+  "description": "بوت تيليغرام لنشر رسائل إسلامية تلقائيًا في القنوات حسب مواعيد محددة",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test/manualTest.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
