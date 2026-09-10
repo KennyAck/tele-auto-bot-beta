@@ -64,7 +64,7 @@ function registerBroadcastCommand(bot) {
     setBroadcastState(chatId, { stage: 'awaiting_text' });
     await bot.sendMessage(
       chatId,
-      '📢 أرسل الآن نص الرسالة التي تريد بثّها لكل مستخدمي البوت (وليس القنوات).\nيدعم تنسيق **Markdown** مثل النجمتين للخط العريض.'
+      '📢 أرسل الآن نص الرسالة التي تريد بثّها لكل مستخدمي البوت (وليس القنوات).\nيدعم تنسيق *Markdown* — نجمة واحدة قبل وبعد الكلمة لجعلها *عريضة*.'
     );
   });
 }
