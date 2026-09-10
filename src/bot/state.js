@@ -5,6 +5,26 @@
 // يكفي أن يضغط المستخدم الزر مجدداً — لذلك لا داعي لتخزينها في قاعدة البيانات
 const pendingScheduleInput = new Map();
 
+// حالة تدفّق البث (Broadcast) — للمشرف فقط
+// key: admin chat_id → value: { stage: 'awaiting_text' | 'awaiting_confirm', text? }
+const pendingBroadcast = new Map();
+
+function setBroadcastState(adminChatId, value) {
+  pendingBroadcast.set(adminChatId, value);
+}
+
+function getBroadcastState(adminChatId) {
+  return pendingBroadcast.get(adminChatId);
+}
+
+function hasBroadcastState(adminChatId) {
+  return pendingBroadcast.has(adminChatId);
+}
+
+function clearBroadcastState(adminChatId) {
+  pendingBroadcast.delete(adminChatId);
+}
+
 function setPending(userChatId, value) {
   pendingScheduleInput.set(userChatId, value);
 }
@@ -21,4 +41,13 @@ function clearPending(userChatId) {
   pendingScheduleInput.delete(userChatId);
 }
 
-module.exports = { setPending, getPending, hasPending, clearPending };
+module.exports = {
+  setPending,
+  getPending,
+  hasPending,
+  clearPending,
+  setBroadcastState,
+  getBroadcastState,
+  hasBroadcastState,
+  clearBroadcastState,
+};
