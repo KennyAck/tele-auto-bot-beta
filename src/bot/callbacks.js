@@ -1,9 +1,10 @@
 'use strict';
 
 const { mainKeyboard, buildChannelPickerKeyboard, buildSchedulesKeyboard } = require('./keyboards');
-const { setPending, clearPending } = require('./state');
+const { setPending, clearPending, getBroadcastState, clearBroadcastState } = require('./state');
 const { getUserChannels, userOwnsChannel } = require('../db/channels');
 const { listSchedules, getScheduleById, deleteSchedule, MAX_SCHEDULES_PER_CHANNEL } = require('../db/schedules');
+const { isAdmin, broadcastMessage } = require('./broadcast');
 const { formatArabicTime } = require('../utils/time');
 
 async function startAddScheduleFlow(bot, userChatId, channelChatId) {
@@ -60,12 +61,17 @@ function registerCallbacks(bot) {
       if (data === 'about_bot') {
         await bot.sendMessage(
           chatId,
-          'ℹ️ **حول البوت:**\nهو بوت مخصص لنشر رسائل إسلامية وتوعوية قصيرة بشكل تلقائي في مواعيد ثابتة تحددها أنت لكل قناة.'
+          'ℹ️ *حول البوت:*\nهو بوت مخصص لنشر رسائل إسلامية وتوعوية قصيرة بشكل تلقائي في مواعيد ثابتة تحددها أنت لكل قناة.',
+          { parse_mode: 'Markdown' }
         );
       } else if (data === 'dev_channel') {
-        await bot.sendMessage(chatId, '📢 **قناة \"وأذّن في الناس\" (المستودع):**\n@islamicvideostorepost');
+        await bot.sendMessage(chatId, '📢 *قناة "وأذّن في الناس" (المستودع):*\n@islamicvideostorepost', {
+          parse_mode: 'Markdown',
+        });
       } else if (data === 'contact_us') {
-        await bot.sendMessage(chatId, '📩 **للشكاوى والاقتراحات:**\nالعبد الفقير إلى الله: @I_royalty_I');
+        await bot.sendMessage(chatId, '📩 *للشكاوى والاقتراحات:*\nالعبد الفقير إلى الله: @I_royalty_I', {
+          parse_mode: 'Markdown',
+        });
       } else if (data === 'back_main') {
         clearPending(chatId);
         await bot.sendMessage(chatId, 'القائمة الرئيسية:', mainKeyboard);
@@ -107,6 +113,25 @@ function registerCallbacks(bot) {
           }
           await showSchedulesList(bot, chatId, schedule.chat_id);
         }
+      } else if (data === 'broadcast_confirm') {
+        if (!isAdmin(userId)) return; // تجاهل صامت لغير المشرفين
+        const state = getBroadcastState(chatId);
+        if (!state || state.stage !== 'awaiting_confirm') {
+          await bot.sendMessage(chatId, 'لا توجد رسالة بث قيد الانتظار حالياً.');
+        } else {
+          clearBroadcastState(chatId);
+          await bot.sendMessage(chatId, '⏳ جارِ الإرسال، قد يستغرق بعض الوقت حسب عدد المستخدمين...');
+          const result = await broadcastMessage(bot, state.text);
+          await bot.sendMessage(
+            chatId,
+            `✅ تم الإرسال بنجاح إلى ${result.success} من أصل ${result.total} مستخدم.` +
+              (result.failed > 0 ? `\n⚠️ فشل الإرسال إلى ${result.failed} مستخدم (على الأرجح حظروا البوت).` : '')
+          );
+        }
+      } else if (data === 'broadcast_cancel') {
+        if (!isAdmin(userId)) return; // تجاهل صامت لغير المشرفين
+        clearBroadcastState(chatId);
+        await bot.sendMessage(chatId, 'تم إلغاء البث.');
       }
     } catch (err) {
       console.error('[callbacks] خطأ في معالجة الزر:', err.message);
