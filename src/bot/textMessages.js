@@ -1,9 +1,11 @@
 'use strict';
 
 const { mainKeyboard } = require('./keyboards');
-const { hasPending, getPending, clearPending } = require('./state');
+const { hasPending, getPending, clearPending, hasBroadcastState } = require('./state');
 const { resolveChannelOwnership } = require('../db/channels');
 const { addSchedule, MAX_SCHEDULES_PER_CHANNEL } = require('../db/schedules');
+const { recordUserIfNew } = require('../db/users');
+const { handleBroadcastFlowText } = require('./broadcast');
 const { parseArabicTime, formatArabicTime } = require('../utils/time');
 
 async function handleScheduleTimeInput(bot, userChatId, text) {
@@ -54,7 +56,8 @@ async function handleChannelLinking(bot, userChatId, fromUserId, text) {
     if (!isAdmin || !canPostMessages) {
       return bot.sendMessage(
         userChatId,
-        `⚠️ **تنبيه:** لم يتم تفعيل القناة!\nيرجى رفع البوت كـ **Admin** في القناة ${channelId} والتأكد من إعطائه **صلاحية نشر الرسائل (Post Messages)** ثم أرسل المعرف مجدداً.`
+        `⚠️ *تنبيه:* لم يتم تفعيل القناة!\nيرجى رفع البوت كـ *Admin* في القناة ${channelId} والتأكد من إعطائه *صلاحية نشر الرسائل (Post Messages)* ثم أرسل المعرف مجدداً.`,
+        { parse_mode: 'Markdown' }
       );
     }
 
@@ -70,13 +73,14 @@ async function handleChannelLinking(bot, userChatId, fromUserId, text) {
     return bot.sendMessage(
       userChatId,
       `✅ تم التأكد من الصلاحيات وتفعيل القناة ${channelId} بنجاح!\nالآن أضف مواعيد النشر عبر زر "⏰ إضافة موعد رسالة".`,
-      mainKeyboard
+      { parse_mode: 'Markdown', ...mainKeyboard }
     );
   } catch (err) {
     console.error('[textMessages] خطأ أثناء ربط القناة:', err.message);
     return bot.sendMessage(
       userChatId,
-      `❌ **عذراً!** البوت ليس عضواً في القناة ${channelId} أو المعرف غير صحيح. أضف البوت للقناة كـ Admin أولاً ثم حاول مجدداً.`
+      `❌ *عذراً!* البوت ليس عضواً في القناة ${channelId} أو المعرف غير صحيح. أضف البوت للقناة كـ Admin أولاً ثم حاول مجدداً.`,
+      { parse_mode: 'Markdown' }
     );
   }
 }
@@ -84,9 +88,19 @@ async function handleChannelLinking(bot, userChatId, fromUserId, text) {
 function registerTextMessages(bot) {
   bot.on('message', async (msg) => {
     const text = msg.text;
+    const userChatId = msg.chat.id;
+
+    // تسجيل أي مستخدم يتفاعل مع البوت (لأغراض ميزة البث لاحقاً)
+    if (msg.from && msg.from.id) {
+      recordUserIfNew(msg.from.id).catch((err) => console.error('[textMessages] خطأ في تسجيل المستخدم:', err.message));
+    }
+
     if (!text) return;
 
-    const userChatId = msg.chat.id;
+    // تدفّق البث له أولوية (المشرف فقط يدخل هذه الحالة أصلاً)
+    if (hasBroadcastState(userChatId)) {
+      return handleBroadcastFlowText(bot, msg);
+    }
 
     if (hasPending(userChatId)) {
       return handleScheduleTimeInput(bot, userChatId, text);
