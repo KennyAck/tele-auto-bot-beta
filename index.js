@@ -71,6 +71,16 @@ app.listen(PORT, async () => {
     console.log('تنبيه: RENDER_EXTERNAL_URL غير مضبوط — لم يتم إعداد Webhook.');
   }
 });
+    try {
+      await bot.setWebHook(`${externalUrl}/bot${token}`);
+      console.log('Webhook configured');
+    } catch (err) {
+      console.error('فشل إعداد Webhook:', err.message);
+    }
+  } else {
+    console.log('تنبيه: RENDER_EXTERNAL_URL غير مضبوط — لم يتم إعداد Webhook.');
+  }
+});
 });
 
 // رابط خاص لـ UptimeRobot يمنع Render من النوم
